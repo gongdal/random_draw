@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>셋로구청 추첨 시스템</title>
+<title>셋로구청 공식 추첨 결과</title>
 
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
@@ -13,26 +13,14 @@ body {
     text-align:center;
 }
 
-textarea {
-    width:260px;
-    height:120px;
-    margin:10px;
-}
-
-button {
-    margin:5px;
-    padding:10px 18px;
-    cursor:pointer;
-}
-
 .machine {
-    font-size:30px;
-    height:40px;
-    margin-top:10px;
+    font-size:40px;
+    height:60px;
+    margin-top:20px;
 }
 
 .ball {
-    font-size:22px;
+    font-size:26px;
     margin:5px;
 }
 
@@ -53,21 +41,7 @@ button {
 
 <body>
 
-<h2>🎰 셋로구청 자동 추첨기</h2>
-
-<div>
-    <h3>🪆 피규어</h3>
-    <textarea id="figureInput" placeholder="이모지 한 줄씩 입력"></textarea>
-
-    <h3>🌿 사쉐</h3>
-    <textarea id="sachetInput" placeholder="이모지 한 줄씩 입력"></textarea>
-</div>
-
-<button onclick="generate()">🎯 결과 생성</button>
-<button onclick="reveal()">👀 결과 공개</button>
-<button onclick="copyLink()">🔗 결과 링크 복사</button>
-<button onclick="openShortener()">✂️ 링크 줄이기</button>
-<button onclick="capture()">📸 이미지 저장</button>
+<h2>🎰 셋로구청 공식 추첨 시스템</h2>
 
 <div class="machine" id="machine">🎲</div>
 
@@ -107,7 +81,7 @@ button {
 셋로구청장 김달주
 </p>
 
-<!-- 🔴 텍스트 도장 -->
+<!-- 🔴 도장 -->
 <div style="
     width:90px;
     height:90px;
@@ -133,104 +107,55 @@ button {
 <script>
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
-let result={figure:null,sachet:null};
+let result={figure:[], sachet:[]};
 
-function pickTwo(arr){
-    let a=[...arr];
-    let res=[];
-    for(let i=0;i<2;i++){
-        let idx=Math.floor(Math.random()*a.length);
-        res.push(a.splice(idx,1)[0]);
+async function playAnimation(){
+
+    let m=document.getElementById("machine");
+
+    // 🎲 굴리는 연출
+    for(let i=0;i<25;i++){
+        m.innerText=["🎲","✨","🎯"][Math.floor(Math.random()*3)];
+        await sleep(80);
     }
-    return res;
+
+    m.innerText="추첨 완료";
+
+    await sleep(500);
+
+    // 결과 공개
+    document.getElementById("figureResult").classList.remove("hidden");
+    document.getElementById("sachetResult").classList.remove("hidden");
 }
 
-async function generate(){
+window.onload = async function(){
 
-    let f=document.getElementById("figureInput").value.split("\n").filter(x=>x);
-    let s=document.getElementById("sachetInput").value.split("\n").filter(x=>x);
+    let p=new URLSearchParams(location.search);
+    let data=p.get("data");
 
-    if(f.length<2||s.length<2){
-        alert("각 최소 2명 필요!");
+    if(!data){
+        document.getElementById("machine").innerText="데이터 없음";
         return;
     }
 
-    result.figure=pickTwo(f);
-    result.sachet=pickTwo(s);
+    // ✅ 디코딩
+    let decoded = JSON.parse(
+        new TextDecoder().decode(
+            Uint8Array.from(atob(data), c => c.charCodeAt(0))
+        )
+    );
 
+    result = decoded;
+
+    // 결과 미리 넣어두기 (숨김 상태)
     document.getElementById("figureResult").innerHTML =
         result.figure.map(x=>`<div class="ball">${x}</div>`).join("");
 
     document.getElementById("sachetResult").innerHTML =
         result.sachet.map(x=>`<div class="ball">${x}</div>`).join("");
 
-    document.getElementById("figureResult").classList.add("hidden");
-    document.getElementById("sachetResult").classList.add("hidden");
-
-    let m=document.getElementById("machine");
-    for(let i=0;i<20;i++){
-        m.innerText=["🎲","✨","🎯"][Math.floor(Math.random()*3)];
-        await sleep(80);
-    }
-    m.innerText="완료";
-}
-
-function reveal(){
-    document.getElementById("figureResult").classList.remove("hidden");
-    document.getElementById("sachetResult").classList.remove("hidden");
-}
-
-function copyLink(){
-
-    if(!result.figure||!result.sachet){
-        alert("먼저 결과 생성!");
-        return;
-    }
-
-    let raw=JSON.stringify(result);
-    let encoded=btoa(unescape(encodeURIComponent(raw)));
-
-    let url=location.origin+location.pathname+"?data="+encoded;
-
-    navigator.clipboard.writeText(url);
-    alert("링크 복사 완료!");
-}
-
-function openShortener(){
-    window.open("https://bitly.com/");
-}
-
-function capture(){
-    html2canvas(document.getElementById("captureArea")).then(canvas=>{
-        let a=document.createElement("a");
-        a.href=canvas.toDataURL();
-        a.download="result.png";
-        a.click();
-    });
-}
-
-window.onload=function(){
-
-    let p=new URLSearchParams(location.search);
-    let data=p.get("data");
-
-    if(data){
-        let decoded = JSON.parse(
-            new TextDecoder().decode(
-                Uint8Array.from(atob(data), c => c.charCodeAt(0))
-            )
-        );
-        result=decoded;
-
-        document.getElementById("figureResult").innerHTML =
-            result.figure.map(x=>`<div class="ball">${x}</div>`).join("");
-
-        document.getElementById("sachetResult").innerHTML =
-            result.sachet.map(x=>`<div class="ball">${x}</div>`).join("");
-
-        document.getElementById("figureResult").classList.add("hidden");
-        document.getElementById("sachetResult").classList.add("hidden");
-    }
+    // 애니메이션 실행
+    await playAnimation();
 }
 </script>
 
