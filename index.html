@@ -2,31 +2,47 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>셋로구청 공식 자동 추첨기</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>셋로구청 공식 추첨 시스템</title>
 
 <style>
 body {
-    font-family: 'Malgun Gothic', sans-serif;
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
     background:#f4f6f8;
     text-align:center;
+    padding-bottom: 50px;
 }
 
 textarea {
-    width:260px;
+    width:280px;
     height:120px;
     margin:10px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
 }
 
 button {
     margin:5px;
-    padding:10px 18px;
+    padding:12px 20px;
     cursor:pointer;
+    border-radius: 5px;
+    border: none;
+    background: #333;
+    color: white;
+    font-weight: bold;
+}
+
+button:hover {
+    background: #555;
 }
 
 .machine {
     font-size:42px;
-    margin:20px;
+    margin:30px;
     font-weight:bold;
+    min-height: 60px;
+    color: #2c3e50;
 }
 
 .ball {
@@ -34,13 +50,15 @@ button {
     margin:6px;
     font-size:26px;
     transition:0.3s;
+    padding: 5px;
 }
 
 .winner {
-    background:yellow;
-    border-radius:10px;
-    padding:6px;
+    background:#ffeaa7;
+    border-radius:12px;
+    padding:10px;
     transform:scale(1.2);
+    border: 2px solid #fdcb6e;
 }
 
 .hidden {
@@ -48,25 +66,35 @@ button {
 }
 
 #paper {
-    width:700px;
+    width:90% ;
+    max-width: 700px;
     margin:30px auto;
     background:white;
     padding:40px;
-    border:1px solid black;
+    border:2px solid #333;
     text-align:left;
+    box-shadow: 10px 10px 0px rgba(0,0,0,0.1);
 }
 
 .firework {
     position:fixed;
     top:50%;
     left:50%;
-    font-size:40px;
-    animation:boom 0.8s ease-out;
+    font-size:50px;
+    z-index: 9999;
+    pointer-events: none;
+    animation:boom 0.8s ease-out forwards;
 }
 
 @keyframes boom {
-    0% {transform:scale(0.3); opacity:1;}
-    100% {transform:scale(2.5); opacity:0;}
+    0% {transform:translate(-50%, -50%) scale(0.3); opacity:1;}
+    100% {transform:translate(-50%, -50%) scale(3); opacity:0;}
+}
+
+hr {
+    border: 0;
+    border-top: 1px dashed #ccc;
+    margin: 25px 0;
 }
 </style>
 </head>
@@ -76,175 +104,191 @@ button {
 <h2>🎰 셋로구청 공식 추첨 시스템</h2>
 
 <div id="adminArea">
-    <h3>🪆 피규어</h3>
-    <textarea id="figureInput" placeholder="이모지 한 줄씩 입력"></textarea>
-
-    <h3>🌿 사쉐</h3>
-    <textarea id="sachetInput" placeholder="이모지 한 줄씩 입력"></textarea>
+    <p>추첨 대상자를 한 줄에 한 명(또는 이모지)씩 입력해주세요.</p>
+    <div>
+        <h3>🪆 피규어 명단</h3>
+        <textarea id="figureInput" placeholder="이모지 또는 이름 입력"></textarea>
+    </div>
+    <div>
+        <h3>🌿 사쉐 명단</h3>
+        <textarea id="sachetInput" placeholder="이모지 또는 이름 입력"></textarea>
+    </div>
 
     <br>
     <button onclick="generate()">🎯 추첨 실시</button>
-    <button onclick="copyLink()">🔗 결과 링크 복사</button>
+    <button onclick="copyLink()">🔗 결과 공유 링크 복사</button>
 </div>
 
-<div class="machine" id="machine">🎲 준비중...</div>
+<div class="machine" id="machine">🎲 대기 중...</div>
 
 <div id="paper">
+    <h3>📋 참여자 명단</h3>
+    <p><strong>🪆 피규어:</strong> <span id="figureList"></span></p>
+    <p><strong>🌿 사쉐:</strong> <span id="sachetList"></span></p>
 
-<h3>📋 참여자 명단</h3>
+    <hr>
 
-<p>🪆 피규어</p>
-<div id="figureList"></div>
+    <h3>🎯 당첨 결과</h3>
+    <div style="margin-bottom: 20px;">
+        <p><strong>🪆 피규어 당첨자</strong></p>
+        <div id="figureResult" style="min-height: 50px;"></div>
+    </div>
 
-<p>🌿 사쉐</p>
-<div id="sachetList"></div>
-
-<hr>
-
-<h3>🎯 추첨 결과</h3>
-
-<p>🪆 피규어</p>
-<div id="figureResult"></div>
-
-<p>🌿 사쉐</p>
-<div id="sachetResult"></div>
-
+    <div>
+        <p><strong>🌿 사쉐 당첨자</strong></p>
+        <div id="sachetResult" style="min-height: 50px;"></div>
+    </div>
 </div>
 
 <script>
-function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-let result={figure:[], sachet:[]};
+let currentResult = { figure: [], sachet: [] };
 
-function pickTwo(arr){
-    let a=[...arr];
-    let res=[];
-    for(let i=0;i<2;i++){
-        let idx=Math.floor(Math.random()*a.length);
-        res.push(a.splice(idx,1)[0]);
+// 랜덤 2명 추출 함수
+function pickTwo(arr) {
+    let pool = [...arr];
+    let selected = [];
+    for (let i = 0; i < 2; i++) {
+        if (pool.length === 0) break;
+        let idx = Math.floor(Math.random() * pool.length);
+        selected.push(pool.splice(idx, 1)[0]);
     }
-    return res;
+    return selected;
 }
 
-function generate(){
-    let f=document.getElementById("figureInput").value.split("\n").filter(x=>x);
-    let s=document.getElementById("sachetInput").value.split("\n").filter(x=>x);
+// 추첨 실행 (데이터 생성)
+function generate() {
+    let f = document.getElementById("figureInput").value.split("\n").map(x => x.trim()).filter(x => x);
+    let s = document.getElementById("sachetInput").value.split("\n").map(x => x.trim()).filter(x => x);
 
-    if(f.length<2||s.length<2){
-        alert("각 최소 2명 필요!");
+    if (f.length < 2 || s.length < 2) {
+        alert("피규어와 사쉐 각각 최소 2명 이상 입력해야 합니다!");
         return;
     }
 
-    result.figure=pickTwo(f);
-    result.sachet=pickTwo(s);
+    currentResult.figure = pickTwo(f);
+    currentResult.sachet = pickTwo(s);
 
-    alert("추첨 완료! 링크 생성하세요");
+    alert("추첨이 완료되었습니다! '결과 공유 링크 복사' 버튼을 눌러 링크를 생성하세요.");
 }
 
-function encodeData(data){
-    return btoa(
-        String.fromCharCode(...new TextEncoder().encode(JSON.stringify(data)))
-    );
+/**
+ * 유니코드(이모지)를 포함한 객체를 안전하게 Base64로 인코딩
+ */
+function encodeData(data) {
+    const json = JSON.stringify(data);
+    // encodeURIComponent로 유니코드를 이스케이프한 뒤 btoa 처리
+    return btoa(encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (match, p1) => {
+        return String.fromCharCode('0x' + p1);
+    }));
 }
 
-function decodeData(data){
-    return JSON.parse(
-        new TextDecoder().decode(
-            Uint8Array.from(atob(data), c=>c.charCodeAt(0))
-        )
-    );
+/**
+ * Base64 데이터를 다시 객체로 디코딩
+ */
+function decodeData(data) {
+    const json = decodeURIComponent(Array.prototype.map.call(atob(data), (c) => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    return JSON.parse(json);
 }
 
-function copyLink(){
-    let f=document.getElementById("figureInput").value.split("\n").filter(x=>x);
-    let s=document.getElementById("sachetInput").value.split("\n").filter(x=>x);
+// 결과 링크 생성 및 복사
+function copyLink() {
+    let f = document.getElementById("figureInput").value.split("\n").map(x => x.trim()).filter(x => x);
+    let s = document.getElementById("sachetInput").value.split("\n").map(x => x.trim()).filter(x => x);
 
-    if(!result.figure.length){
-        alert("먼저 추첨!");
+    if (!currentResult.figure.length) {
+        alert("먼저 '추첨 실시' 버튼을 눌러주세요!");
         return;
     }
 
-    let payload={
-        figureList:f,
-        sachetList:s,
-        figure:result.figure,
-        sachet:result.sachet
+    let payload = {
+        fList: f,
+        sList: s,
+        fWin: currentResult.figure,
+        sWin: currentResult.sachet
     };
 
-    let url=location.origin+location.pathname+"?data="+encodeData(payload);
+    // 현재 페이지 경로에 데이터 파라미터 추가
+    let url = window.location.origin + window.location.pathname + "?data=" + encodeData(payload);
 
-    navigator.clipboard.writeText(url);
-    alert("링크 복사 완료!");
+    navigator.clipboard.writeText(url).then(() => {
+        alert("공유용 결과 링크가 복사되었습니다! 이 링크를 다른 사람에게 전달하세요.");
+    }).catch(err => {
+        console.error('클립보드 복사 실패:', err);
+        alert("링크 생성 실패. 주소창을 확인해 주세요.");
+    });
 }
 
-// 🎉 폭죽
-function firework(){
-    let el=document.createElement("div");
-    el.className="firework";
-    el.innerText="🎉";
+// 폭죽 효과
+function firework() {
+    let el = document.createElement("div");
+    el.className = "firework";
+    el.innerText = "🎉";
     document.body.appendChild(el);
-
-    setTimeout(()=>el.remove(),800);
+    setTimeout(() => el.remove(), 800);
 }
 
-// 🎬 연출
-async function dramaticDraw(list, winners, targetId){
+// 드라마틱한 추첨 연출
+async function dramaticDraw(winners, targetId) {
+    let container = document.getElementById(targetId);
+    container.innerHTML = "";
+    let m = document.getElementById("machine");
 
-    let container=document.getElementById(targetId);
-    container.innerHTML="";
-
-    let m=document.getElementById("machine");
-
-    for(let i=3;i>0;i--){
-        m.innerText="추첨 시작까지 "+i;
+    for (let i = 3; i > 0; i--) {
+        m.innerText = "추첨 시작까지 " + i;
         await sleep(700);
     }
 
-    m.innerText="🎲 추첨 중...";
+    m.innerText = "🎲 추첨 중...";
     await sleep(1000);
 
-    // 1명씩 등장
-    for(let w of winners){
-
-        m.innerText="선정 중...";
+    for (let w of winners) {
+        m.innerText = "선정 중...";
         await sleep(800);
 
-        let span=document.createElement("span");
-        span.className="ball winner hidden";
-        span.innerText=w;
-
+        let span = document.createElement("span");
+        span.className = "ball winner hidden";
+        span.innerText = w;
         container.appendChild(span);
 
         await sleep(200);
         span.classList.remove("hidden");
-
         firework();
         await sleep(800);
     }
-
-    m.innerText="추첨 완료 🎉";
+    m.innerText = "추첨 완료 🎉";
 }
 
-window.onload=async function(){
+// 페이지 로드 시 결과 확인 모드
+window.onload = async function() {
+    let params = new URLSearchParams(window.location.search);
+    let dataStr = params.get("data");
 
-    let p=new URLSearchParams(location.search);
-    let data=p.get("data");
+    if (!dataStr) return;
 
-    if(!data) return;
+    // 데이터가 있으면 관리자 영역 숨기기
+    document.getElementById("adminArea").style.display = "none";
 
-    document.getElementById("adminArea").style.display="none";
+    try {
+        let d = decodeData(dataStr);
 
-    let d=decodeData(data);
+        // 명단 뿌리기
+        document.getElementById("figureList").innerHTML = d.fList.map(x => `<span class="ball">${x}</span>`).join("");
+        document.getElementById("sachetList").innerHTML = d.sList.map(x => `<span class="ball">${x}</span>`).join("");
 
-    document.getElementById("figureList").innerHTML =
-        d.figureList.map(x=>`<span class="ball">${x}</span>`).join("");
-
-    document.getElementById("sachetList").innerHTML =
-        d.sachetList.map(x=>`<span class="ball">${x}</span>`).join("");
-
-    await dramaticDraw(d.figureList, d.figure, "figureResult");
-    await sleep(500);
-    await dramaticDraw(d.sachetList, d.sachet, "sachetResult");
+        // 연출 시작
+        await dramaticDraw(d.fWin, "figureResult");
+        await sleep(1000);
+        await dramaticDraw(d.sWin, "sachetResult");
+        
+        document.getElementById("machine").innerText = "모든 추첨이 종료되었습니다! 🎊";
+    } catch (e) {
+        console.error("데이터 로딩 오류:", e);
+        alert("올바르지 않은 데이터 링크입니다.");
+    }
 }
 </script>
 
