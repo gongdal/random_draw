@@ -215,7 +215,11 @@ window.onload=function(){
     let data=p.get("data");
 
     if(data){
-        let decoded=JSON.parse(decodeURIComponent(escape(atob(data))));
+        let decoded = JSON.parse(
+            new TextDecoder().decode(
+                Uint8Array.from(atob(data), c => c.charCodeAt(0))
+            )
+        );
         result=decoded;
 
         document.getElementById("figureResult").innerHTML =
