@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>셋로구청 공식 추첨 시스템</title>
+<title>셋로구청 자동 추첨기</title>
 <style>
     body { font-family: 'Malgun Gothic', sans-serif; background:#f4f6f8; text-align:center; padding: 20px; }
     textarea { width:260px; height:100px; margin:10px; padding:10px; border-radius:5px; border:1px solid #ccc; }
@@ -18,15 +18,15 @@
 </head>
 <body>
 
-<h2>🎰 셋로구청 공식 추첨 시스템</h2>
+<h2>🎰 셋로구청 자동 추첨기</h2>
 
 <div id="adminArea">
     <div>
-        <h3>🪆 피규어 명단 (한 줄에 하나)</h3>
+        <h3>🪆 피규어 명단 (한 줄에 하나씩)</h3>
         <textarea id="figureInput"></textarea>
     </div>
     <div>
-        <h3>🌿 사쉐 명단 (한 줄에 하나)</h3>
+        <h3>🌿 사쉐 명단 (한 줄에 하나씩)</h3>
         <textarea id="sachetInput"></textarea>
     </div>
     <button onclick="generate()">🎯 1. 추첨하기</button>
@@ -83,7 +83,7 @@ function copyLink() {
     const url = window.location.origin + window.location.pathname + "?res=" + dataStr;
 
     navigator.clipboard.writeText(url).then(() => {
-        alert("링크 복사 성공! 이 링크를 공유하면 결과 애니메이션이 나옵니다.");
+        alert("링크 복사 성공! 이 링크를 공유하면 결과가 확인할 수 있습니다.");
     }).catch(() => {
         alert("링크 복사 실패! 주소창의 긴 주소를 수동으로 복사해주세요.");
     });
